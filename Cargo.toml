@@ -1,0 +1,26 @@
+[package]
+name = "lukaj"
+version = "0.1.0"
+edition = "2021"
+license = "LGPL-3.0-or-later"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.4.6", features = ["derive"] }
+env_logger = "0.10.0"
+log = "0.4.20"
+sdl2 = "0.35.2"
+cairo-rs = { version = "0.18.2", optional = true }
+librsvg = { version = "2.57.0", optional = true }
+resvg = { version = "0.36.0", optional = true }
+tiny-skia = { version = "0.11.2", optional = true }
+usvg = { version = "0.36.0", optional = true }
+
+[features]
+default = ["use-rsvg"]
+use-rsvg = ["cairo-rs", "librsvg"]
+use-usvg = ["resvg", "tiny-skia", "usvg"]
+
+[dev-dependencies]
+rstest = "0.18.2"
