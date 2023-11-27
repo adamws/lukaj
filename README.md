@@ -8,3 +8,11 @@
   [![CI - Main](https://github.com/adamws/lukaj/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/adamws/lukaj/actions/workflows/build-and-test.yml)
   [![License](https://img.shields.io/github/license/adamws/lukaj)](https://github.com/adamws/lukaj/blob/master/LICENSE)
 </h4>
+
+## Features
+
+Swipe SVG graphics comparison with zoom and drag support.
+Supports two SVG rendering backends: [librsvg](https://crates.io/crates/librsvg) and [resvg](https://crates.io/crates/resvg).
+
+> [!WARNING]
+> This is early version which has been tested only on Linux.
