@@ -34,3 +34,21 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  publish:
+    name: Publish release
+    needs:
+    - build_and_test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/lukaj-test:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+    steps:
+    - uses: actions/checkout@v3
+    - run: rustup update stable && rustup default stable
+    - name: Push to crates.io
+      run: cargo publish --all-features
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
