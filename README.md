@@ -5,6 +5,7 @@
 
   Interactive diff tool for SVG images.
 
+  [![Crates.io](https://img.shields.io/crates/v/lukaj)](https://crates.io/crates/lukaj)
   [![CI - Main](https://github.com/adamws/lukaj/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/adamws/lukaj/actions/workflows/build-and-test.yml)
   [![License](https://img.shields.io/github/license/adamws/lukaj)](https://github.com/adamws/lukaj/blob/master/LICENSE)
 </h4>
