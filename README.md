@@ -15,5 +15,15 @@
 Swipe SVG graphics comparison with zoom and drag support.
 Supports two SVG rendering backends: [librsvg](https://crates.io/crates/librsvg) and [resvg](https://crates.io/crates/resvg).
 
+## Installation
+
+If you're a Rust programmer, lukaj can be installed with `cargo`.
+
+```shell
+$ cargo install lukaj
+```
+
 > [!WARNING]
 > This is early version which has been tested only on Linux.
+
+
