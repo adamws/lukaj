@@ -8,8 +8,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_and_test:
-    name: Rust project - latest
+  build-and-test:
+    name: Build and test on linux
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository_owner }}/lukaj-test:latest
@@ -34,10 +34,34 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  build-win:
+    name: Build on windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: msys2/setup-msys2@v2
+        with:
+          location: D:\
+          update: true
+          install : >-
+            mingw-w64-x86_64-gtk4
+            mingw-w64-x86_64-gettext
+            mingw-w64-x86_64-libxml2
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+      - run: rustup update stable-gnu && rustup default stable-gnu
+      - shell: bash
+        run: |
+          echo "D:/msys64/mingw64/bin" >> $GITHUB_PATH
+      - run: |
+          cargo build --all-features --verbose
+
   publish:
     name: Publish release
     needs:
-    - build_and_test
+    - build-and-test
+    - build-win
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository_owner }}/lukaj-test:latest
