@@ -8,6 +8,7 @@
   [![Crates.io](https://img.shields.io/crates/v/lukaj)](https://crates.io/crates/lukaj)
   [![CI - Main](https://github.com/adamws/lukaj/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/adamws/lukaj/actions/workflows/build-and-test.yml)
   [![License](https://img.shields.io/github/license/adamws/lukaj)](https://github.com/adamws/lukaj/blob/master/LICENSE)
+  [![Coverage Status](https://coveralls.io/repos/github/adamws/lukaj/badge.svg?branch=master)](https://coveralls.io/github/adamws/lukaj?branch=master)
 </h4>
 
 ## Features
