@@ -29,4 +29,7 @@ use-rsvg = ["cairo-rs", "librsvg"]
 use-usvg = ["resvg", "tiny-skia", "usvg"]
 
 [dev-dependencies]
+dssim-core = "3.2.7"
+image = "0.24.7"
+rgb = "0.8.37"
 rstest = "0.18.2"
