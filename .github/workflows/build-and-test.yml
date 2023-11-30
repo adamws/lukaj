@@ -29,13 +29,13 @@ jobs:
       - run: cargo test --all-features --verbose
       - uses: actions/upload-artifact@v3
         with:
-          name: artifacts ${{ matrix.toolchain }}
+          name: artifacts linux ${{ matrix.toolchain }}
           path: target/tmp/*
           retention-days: 7
           if-no-files-found: error
 
-  build-win:
-    name: Build on windows
+  build-and-test-win:
+    name: Build and test on windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -56,12 +56,19 @@ jobs:
           echo "D:/msys64/mingw64/bin" >> $GITHUB_PATH
       - run: |
           cargo build --all-features --verbose
+      - run: cargo test --all-features --verbose
+      - uses: actions/upload-artifact@v3
+        with:
+          name: artifacts windows
+          path: target/tmp/*
+          retention-days: 7
+          if-no-files-found: error
 
   publish:
     name: Publish release
     needs:
     - build-and-test
-    - build-win
+    - build-and-test-win
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository_owner }}/lukaj-test:latest
