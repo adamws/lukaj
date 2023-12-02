@@ -33,3 +33,6 @@ RUN curl -o /usr/bin/xvfb-run \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_HOME="/root/.cargo"
+
+RUN cargo install grcov \
+  && rustup component add llvm-tools-preview
