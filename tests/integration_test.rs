@@ -87,8 +87,8 @@ fn compare_images(actual: &String, expected: &String) -> Result<Val, String> {
 }
 
 #[rstest]
-#[case("rsvg-with-cairo")]
-#[case("usvg-with-skia")]
+#[cfg_attr(feature = "use-rsvg", case("rsvg-with-cairo"))]
+#[cfg_attr(feature = "use-usvg", case("usvg-with-skia"))]
 fn run_diff(#[case] backend: String) -> Result<(), String> {
     let base: &'static str = env!("CARGO_MANIFEST_DIR");
     let executable: &'static str = env!("CARGO_BIN_EXE_lukaj");

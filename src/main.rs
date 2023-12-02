@@ -19,6 +19,9 @@ use std::path::PathBuf;
 #[cfg(feature = "use-usvg")]
 use usvg::{fontdb, TreeParsing, TreeTextToPath};
 
+#[cfg(not(any(feature = "use-rsvg", feature = "use-usvg")))]
+compile_error!("Either feature \"use-rsvg\" or \"use-usvg\" must be enabled for this crate.");
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
@@ -30,7 +33,7 @@ struct Cli {
     scale: Option<f64>,
 
     /// Preferred backend
-    #[arg(long, value_enum, default_value_t=SvgBackend::RsvgWithCairo)]
+    #[arg(long, value_enum, default_value_t=SvgBackend::value_variants()[0])]
     backend: SvgBackend,
 }
 
