@@ -1,5 +1,9 @@
 FROM ubuntu:mantic
 
+LABEL org.opencontainers.image.source=https://github.com/adamws/lukaj
+LABEL org.opencontainers.image.description="Container image for lukaj CI tests"
+LABEL org.opencontainers.image.licenses=LGPL-3.0-or-later
+
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
