@@ -103,3 +103,55 @@ additional development libraries.
 > [!WARNING]
 > Precompiled binaries or installation with package managers are not supported yet.
 
+## Usage
+
+To compare two SVG files run:
+
+```
+$ lukaj [path 1] [path 2]
+```
+
+Lukaj uses following mouse/keyboard controls:
+
+| Button            | Action                        |
+| ---               | ---                           |
+| Left Click        | Move diff separator           |
+| Right Click       | Move images                   |
+| Scroll            | Zoom in and out               |
+| R                 | Reset images position         |
+| Esc               | Exit                          |
+
+<details>
+  <summary>Complete lukaj options <i>(click to expand)</i></summary>
+
+  ```
+  $ lukaj --help
+  Interactive diff tool for SVG images
+
+  Usage: lukaj [OPTIONS] [FILES]...
+
+  Arguments:
+    [FILES]...  Files to compare
+
+    Options:
+      -s, --scale <VALUE>      Sets a scaling factor
+      --backend <BACKEND>      Preferred backend [default: rsvg-with-cairo]
+                               [possible values: rsvg-with-cairo, usvg-with-skia]
+      -h, --help               Print help
+      -V, --version            Print version
+  ```
+
+</details>
+
+### Git integration
+
+Lukaj can be used as [git difftool](https://git-scm.com/docs/git-difftool).
+To add `git diff-svg` custom command, copy and paste following sections to `.gitconfig` file:
+
+```
+[difftool "lukaj"]
+    cmd = ~/.cargo/bin/lukaj $LOCAL $REMOTE
+[alias]
+    diff-svg = "difftool -t lukaj -y"
+```
+
