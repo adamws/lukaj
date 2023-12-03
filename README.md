@@ -155,3 +155,6 @@ To add `git diff-svg` custom command, copy and paste following sections to `.git
     diff-svg = "difftool -t lukaj -y"
 ```
 
+### Other integrations
+
+- [PCB visual diff with kicad-cli and lukaj](https://adamws.github.io/pcb-visual-diff-with-kicad-cli-and-lukaj)
