@@ -93,9 +93,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - run: rustup update stable && rustup default stable
-      #    - name: Push to crates.io
-      #      run: cargo publish --all-features
-      #      env:
-      #        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    - name: Push to crates.io
+      run: cargo publish --all-features
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
     - name: Create GitHub release
       uses: softprops/action-gh-release@v1
