@@ -97,3 +97,5 @@ jobs:
       run: cargo publish --all-features
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    - name: Create GitHub release
+      uses: softprops/action-gh-release@v1
