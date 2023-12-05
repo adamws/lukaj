@@ -132,13 +132,18 @@ jobs:
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
-    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
     steps:
     - uses: actions/checkout@v3
     - run: rustup update stable && rustup default stable
-    - name: Create GitHub release
+    - run: |
+        cargo install cargo-vcpkg
+        cargo vcpkg build
+    - run: cargo publish --all-features --dry-run
+    - if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+      name: Create GitHub release
       uses: softprops/action-gh-release@v1
-    - name: Push to crates.io
+    - if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+      name: Push to crates.io
       run: cargo publish --all-features
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
