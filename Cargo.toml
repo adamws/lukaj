@@ -16,7 +16,7 @@ categories = ["graphics", "multimedia::images"]
 clap = { version = "4.4.6", features = ["derive"] }
 env_logger = "0.10.0"
 log = "0.4.20"
-sdl2 = "0.35.2"
+sdl2 = { version = "0.36.0", default-features = false }
 cairo-rs = { version = "0.18.2", optional = true }
 librsvg = { version = "2.57.0", optional = true }
 resvg = { version = "0.36.0", optional = true }
@@ -28,8 +28,19 @@ default = ["use-usvg"]
 use-rsvg = ["cairo-rs", "librsvg"]
 use-usvg = ["resvg", "tiny-skia", "usvg"]
 
+# use static linking as much as possible
+static-link = ["sdl2/use-vcpkg", "sdl2/static-link"]
+
 [dev-dependencies]
 dssim-core = "3.2.7"
 image = "0.24.7"
 rgb = "0.8.37"
 rstest = "0.18.2"
+
+[package.metadata.vcpkg]
+dependencies = ["sdl2"]
+git = "https://github.com/microsoft/vcpkg"
+rev = "a42af01" # release 2023.11.20
+
+[package.metadata.vcpkg.target]
+x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md" }

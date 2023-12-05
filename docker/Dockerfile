@@ -8,20 +8,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
   && apt-get install -y \
-     automake autoconf build-essential curl libtool tar \
+     automake autoconf build-essential curl cmake git libtool ninja-build tar unzip zip \
      libcairo2-dev libgdk-pixbuf-2.0-dev libglib2.0-dev libpango1.0-dev \
      libsdl2-dev libxml2-dev \
      xvfb x11-xserver-utils \
   && rm -rf /var/lib/apt/lists/*
-
-RUN curl -O https://imagemagick.org/archive/ImageMagick-7.1.1-21.tar.xz \
-  && tar -xvf ImageMagick-7.1.1-21.tar.xz \
-  && cd ImageMagick-7.1.1-21 \
-  && ./configure \
-  && make install \
-  && ldconfig /usr/local/lib
-
-ENV PATH="${PATH}:/usr/local/bin"
 
 # archlinux's version of xvfb-run script is better because it includes '-d' flag
 # which works better than '-a' when starting many Xfvb instances in parallel
@@ -34,5 +25,5 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_HOME="/root/.cargo"
 
-RUN cargo install grcov \
+RUN cargo install grcov cargo-vcpkg \
   && rustup component add llvm-tools-preview
