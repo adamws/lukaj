@@ -21,14 +21,20 @@ Swipe SVG graphics comparison with zoom and drag support.
 
 ## Installation
 
+To install **precompiled** version of lukaj go to [latest release](https://github.com/adamws/lukaj/releases/latest)
+page and download archive for your system. Provided binaries are
+static executables for Windows and Linux.
+
 If you're a Rust programmer, lukaj can be installed with `cargo`.
 It supports two graphics backends which are enabled/disabled with
 [cargo features](https://doc.rust-lang.org/cargo/reference/features.html).
+The `use-rsvg` feature is available only when installing from source, precompiled binaries
+on release page include only default feature set.
 
-| Feature name         | SVG library                                 | 2D rendering library                                 |
-| ---                  | ---                                         | ---                                                  |
-| `use-usvg` (default) | [resvg](https://crates.io/crates/resvg)     | [tiny-skia](https://github.com/RazrFalcon/tiny-skia) |
-| `use-rsvg`           | [librsvg](https://crates.io/crates/librsvg) | [cairo](https://www.cairographics.org/)              |
+| Feature name         | SVG library                                 | 2D rendering library                                 | Precompiled binary release |
+| ---                  | ---                                         | ---                                                  | ---                        |
+| `use-usvg` (default) | [resvg](https://crates.io/crates/resvg)     | [tiny-skia](https://github.com/RazrFalcon/tiny-skia) | yes                        |
+| `use-rsvg`           | [librsvg](https://crates.io/crates/librsvg) | [cairo](https://www.cairographics.org/)              | no                         |
 
 Depending on the operating system and selected feature set, lukaj will require
 additional development libraries.
@@ -90,16 +96,12 @@ additional development libraries.
       - For additional `use-rsvg` feature:
 
         ```bash
-        $ cargo install lukaj --features use-usvg
+        $ cargo install lukaj --features use-rsvg
         ```
 
   For different setups see this [GUI development with Rust and GTK4](https://gtk-rs.org/gtk4-rs/stable/latest/book/installation_windows.html) guide.
 
 </details>
-</br>
-
-> [!WARNING]
-> Precompiled binaries or installation with package managers are not supported yet.
 
 ## Usage
 
