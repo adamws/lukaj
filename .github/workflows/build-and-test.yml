@@ -39,7 +39,7 @@ jobs:
             --keep-only "src/*" --keep-only "tests/*" --output-types lcov,html
       - uses: actions/upload-artifact@v3
         with:
-          name: artifacts linux ${{ matrix.toolchain }}
+          name: artifacts-linux-${{ matrix.toolchain }}
           path: target/tmp/*
           retention-days: 7
           if-no-files-found: error
@@ -73,9 +73,51 @@ jobs:
       - run: cargo test --features use-rsvg
       - uses: actions/upload-artifact@v3
         with:
-          name: artifacts windows
+          name: artifacts-windows-gnu
           path: target/tmp/*
           retention-days: 7
+          if-no-files-found: error
+
+  build-executables:
+    name: Build executables
+    runs-on: ${{ matrix.os }}
+    # note that we are not building with `user-rsvg` support here
+    # so using lukaj-test docker image with pre-installed dependencies
+    # is not required
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+        - os: windows-latest
+          target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup update stable && rustup default stable
+      - shell: bash
+        run: |
+          cargo install cargo-vcpkg
+          cargo vcpkg build
+          mkdir artifacts
+          cargo build --verbose --features static-link --release
+          triplet=$(rustc -vV | awk '/^host/ { print $2 }')
+          version=$(awk -F\" '/^version/ { print $2 }' Cargo.toml)
+          name=lukaj-${version}-${triplet}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cd target/release
+            7z a -tzip $name.zip lukaj.exe
+            certutil -hashfile $name.zip SHA256 > ../../artifacts/$name.zip.sha256
+            cp $name.zip ../../artifacts
+          else
+            tar -czvf $name.tar.gz -C target/release lukaj
+            shasum -a 256 $name.tar.gz > artifacts/$name.tar.gz.sha256
+            cp $name.tar.gz artifacts
+          fi
+      - uses: actions/upload-artifact@v3
+        with:
+          name: executables-${{ matrix.os }}
+          path: artifacts
           if-no-files-found: error
 
   publish:
@@ -83,6 +125,7 @@ jobs:
     needs:
     - build-and-test
     - build-and-test-win
+    - build-executables
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository_owner }}/lukaj-test:latest
