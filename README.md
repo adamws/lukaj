@@ -27,8 +27,8 @@ It supports two graphics backends which are enabled/disabled with
 
 | Feature name         | SVG library                                 | 2D rendering library                                 |
 | ---                  | ---                                         | ---                                                  |
-| `use-rsvg` (default) | [librsvg](https://crates.io/crates/librsvg) | [cairo](https://www.cairographics.org/)              |
-| `use-usvg`           | [resvg](https://crates.io/crates/resvg)     | [tiny-skia](https://github.com/RazrFalcon/tiny-skia) |
+| `use-usvg` (default) | [resvg](https://crates.io/crates/resvg)     | [tiny-skia](https://github.com/RazrFalcon/tiny-skia) |
+| `use-rsvg`           | [librsvg](https://crates.io/crates/librsvg) | [cairo](https://www.cairographics.org/)              |
 
 Depending on the operating system and selected feature set, lukaj will require
 additional development libraries.
@@ -36,19 +36,19 @@ additional development libraries.
 <details>
   <summary>On <b>Ubuntu Linux</b> <i>(click to expand)</i></summary>
 
-  1. When using default feature or both (with `cargo --all-features`):
+  1. When using only default `use-usvg` feature:
+
+      ```bash
+      $ sudo apt-get install libsdl2-dev
+      $ cargo install lukaj
+      ```
+
+  2. When using additional `use-rsvg` feature:
 
       ```bash
       $ sudo apt-get install build-essential libcairo2-dev libgdk-pixbuf-2.0-dev \
           libglib2.0-dev libpango1.0-dev libsdl2-dev libxml2-dev
-      $ cargo install lukaj --all-features
-      ```
-
-  2. When using only `use-usvg` feature:
-
-      ```bash
-      $ sudo apt-get install libsdl2-dev
-      $ cargo install lukaj --no-default-features --features use-usvg
+      $ cargo install lukaj --feature user-rsvg
       ```
 
 </details>
@@ -57,18 +57,18 @@ additional development libraries.
   <summary>On <b>Windows</b> (using <a href="https://www.msys2.org/">MSYS2</a>) <i>(click to expand)</i></summary>
 
   1. Install MSYS2 and run from it's terminal run:
-      - For default feature or both:
+      - For default `use-usvg` feature:
+
+        ```bash
+        $ pacman -S mingw-w64-x86_64-SDL2
+        ```
+
+      - For additional `use-rsvg` feature:
 
         ```bash
         $ pacman -S mingw-w64-x86_64-gtk4 mingw-w64-x86_64-gettext \
             mingw-w64-x86_64-libxml2 mingw-w64-x86_64-pkgconf \
             mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2
-        ```
-
-      - For `use-usvg` feature only:
-
-        ```bash
-        $ pacman -S mingw-w64-x86_64-SDL2
         ```
 
   2. Add mingw binaries path (`C:\msys64\mingw64\bin`) to system `Path`
@@ -81,21 +81,19 @@ additional development libraries.
 
   4. Run cargo install command
 
-      - For default feature or both:
+      - For default feature only:
 
         ```bash
-        $ cargo install lukaj --all-features
+        $ cargo install lukaj
         ```
 
-      - For `use-usvg` feature only:
+      - For additional `use-rsvg` feature:
 
         ```bash
-        $ cargo install lukaj --no-default-features --features use-usvg
+        $ cargo install lukaj --features use-usvg
         ```
 
   For different setups see this [GUI development with Rust and GTK4](https://gtk-rs.org/gtk4-rs/stable/latest/book/installation_windows.html) guide.
-  When running with only `use-usvg` feature see [Rust-SDL2](https://github.com/Rust-SDL2/rust-sdl2) readme
-  for different development options.
 
 </details>
 </br>

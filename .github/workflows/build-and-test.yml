@@ -31,8 +31,8 @@ jobs:
           rustup component add llvm-tools-preview
           echo "RUSTFLAGS=-C instrument-coverage" >> $GITHUB_ENV
           echo "LLVM_PROFILE_FILE=target/coverage/%p-%m.profraw" >> $GITHUB_ENV
-      - run: cargo build --all-features
-      - run: cargo test --all-features
+      - run: cargo build --features use-rsvg
+      - run: cargo test --features use-rsvg
       - if: matrix.toolchain == 'stable' && github.ref == 'refs/heads/master'
         run: |
           grcov target/coverage --binary-path target/debug -s . -o target/tmp \
@@ -69,8 +69,8 @@ jobs:
       - run: rustup update stable-gnu && rustup default stable-gnu
       - shell: bash
         run: echo "D:/msys64/mingw64/bin" >> $GITHUB_PATH
-      - run: cargo build --all-features
-      - run: cargo test --all-features
+      - run: cargo build --features use-rsvg
+      - run: cargo test --features use-rsvg
       - uses: actions/upload-artifact@v3
         with:
           name: artifacts windows

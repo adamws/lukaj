@@ -24,7 +24,7 @@ tiny-skia = { version = "0.11.2", optional = true }
 usvg = { version = "0.36.0", optional = true }
 
 [features]
-default = ["use-rsvg"]
+default = ["use-usvg"]
 use-rsvg = ["cairo-rs", "librsvg"]
 use-usvg = ["resvg", "tiny-skia", "usvg"]
 
