@@ -538,7 +538,8 @@ fn main() -> Result<(), String> {
         .opengl()
         .build()
         .map_err(|e| e.to_string())?;
-    window.set_minimum_size(400, 300)
+    window
+        .set_minimum_size(400, 300)
         .map_err(|e| e.to_string())?;
 
     debug!(

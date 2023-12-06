@@ -9,6 +9,10 @@ use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::str;
 
+const BASE: &'static str = env!("CARGO_MANIFEST_DIR");
+const EXECUTABLE: &'static str = env!("CARGO_BIN_EXE_lukaj");
+const TMPDIR: &'static str = env!("CARGO_TARGET_TMPDIR");
+
 fn wrap_with_xvfb(command: &mut Command) -> io::Result<Child> {
     let mut check_command = Command::new("xvfb-run");
     check_command
@@ -89,26 +93,28 @@ fn compare_images(actual: &String, expected: &String) -> Result<Val, String> {
 #[rstest]
 #[cfg_attr(feature = "use-rsvg", case("rsvg-with-cairo"))]
 #[cfg_attr(feature = "use-usvg", case("usvg-with-skia"))]
-fn run_diff(#[case] backend: String) -> Result<(), String> {
-    let base: &'static str = env!("CARGO_MANIFEST_DIR");
-    let executable: &'static str = env!("CARGO_BIN_EXE_lukaj");
-    let tmpdir: &'static str = env!("CARGO_TARGET_TMPDIR");
-
-    let screenshot_name = format!("{}.bmp", backend);
-    let result = format!("{}/{}", tmpdir, screenshot_name);
-    let reference = format!("{}/tests/references/run_diff.bmp", base);
+fn run_diff(
+    #[case] backend: String,
+    #[values(("arcs01", "arcs01_2"), ("tinycircle01", "tinycircle01"))] files: (&str, &str),
+) -> Result<(), String> {
+    let screenshot_name = format!("{}-{}-{}.bmp", backend, files.0, files.1);
+    let result = format!("{}/{}", TMPDIR, screenshot_name);
+    let reference = format!(
+        "{}/tests/references/run-diff-{}-{}.bmp",
+        BASE, files.0, files.1
+    );
     let threshold = 0.07;
 
-    let mut command = Command::new(executable);
+    let mut command = Command::new(EXECUTABLE);
     command
-        .env("CARGO_TARGET_TMPDIR", tmpdir)
+        .env("CARGO_TARGET_TMPDIR", TMPDIR)
         .env("TEST_OUTPUT_FILENAME", screenshot_name)
         .args(&[
             "-s2",
             "--backend",
             &backend,
-            "tests/images/arcs01.svg",
-            "tests/images/arcs01_2.svg",
+            &format!("tests/images/{}.svg", files.0),
+            &format!("tests/images/{}.svg", files.1),
         ]);
 
     let wrapped = wrap_with_xvfb(&mut command).map_err(|e| e.to_string())?;
