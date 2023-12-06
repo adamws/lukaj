@@ -523,23 +523,22 @@ fn main() -> Result<(), String> {
 
     let video_subsystem = sdl_context.video()?;
 
+    let minimum_size = Rect::new(0, 0, 800, 600);
     let maximum_size = get_max_window_size(&video_subsystem)?;
-    let window_width = cmp::min(
-        (workarea_rect.width() as f64 * 1.1) as u32,
-        maximum_size.width(),
-    );
-    let window_height = cmp::min(
-        (workarea_rect.height() as f64 * 1.1) as u32,
-        maximum_size.height(),
-    );
+    let window_width = ((workarea_rect.width() as f64 * 1.1) as u32)
+        .clamp(minimum_size.width(), maximum_size.width());
+    let window_height = ((workarea_rect.height() as f64 * 1.1) as u32)
+        .clamp(minimum_size.height(), maximum_size.height());
 
-    let window = video_subsystem
+    let mut window = video_subsystem
         .window("lukaj", window_width, window_height)
         .position_centered()
         .allow_highdpi()
         .resizable()
         .opengl()
         .build()
+        .map_err(|e| e.to_string())?;
+    window.set_minimum_size(400, 300)
         .map_err(|e| e.to_string())?;
 
     debug!(
