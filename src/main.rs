@@ -553,7 +553,6 @@ fn main() -> Result<(), String> {
 
     let mut canvas = window
         .into_canvas()
-        .software()
         .build()
         .map_err(|e| e.to_string())?;
     texture_creator = canvas.texture_creator();
@@ -657,10 +656,20 @@ fn main() -> Result<(), String> {
 
                 let screenshot_name =
                     env::var("TEST_OUTPUT_FILENAME").unwrap_or(String::from("screenshot.bmp"));
-                return canvas
-                    .window()
-                    .surface(&event_pump)?
-                    .save_bmp(format!("{}/{}", val, screenshot_name));
+
+                let window = canvas.window();
+                let window_rectangle = Rect::new(0, 0, window.size().0, window.size().1);
+                let pixel_format = window.window_pixel_format();
+                let mut pixels = canvas.read_pixels(window_rectangle, pixel_format)?;
+
+                let screen = sdl2::surface::Surface::from_data(
+                    &mut pixels,
+                    window_rectangle.width(),
+                    window_rectangle.height(),
+                    4 * window_rectangle.width(),
+                    pixel_format,
+                )?;
+                return screen.save_bmp(format!("{}/{}", val, screenshot_name));
             }
             _ => {}
         }
