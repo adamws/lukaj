@@ -132,3 +132,31 @@ fn run_diff(
     );
     Ok(())
 }
+
+#[rstest]
+#[cfg_attr(feature = "use-rsvg", case("rsvg-with-cairo"))]
+#[cfg_attr(feature = "use-usvg", case("usvg-with-skia"))]
+fn run_large_zoom(#[case] backend: String) -> Result<(), String> {
+    let screenshot_name = "should_not_be_created.bmp";
+    let result = format!("{}/{}", TMPDIR, screenshot_name);
+
+    let mut command = Command::new(EXECUTABLE);
+    command
+        .env("CARGO_TARGET_TMPDIR", TMPDIR)
+        .env("TEST_OUTPUT_FILENAME", screenshot_name)
+        .args(&[
+            "-s8000",
+            "--backend",
+            &backend,
+            "tests/images/arcs01.svg",
+            "tests/images/arcs01.svg",
+        ]);
+
+    let wrapped = wrap_with_xvfb(&mut command).map_err(|e| e.to_string())?;
+    let output = wrapped.wait_with_output().map_err(|e| e.to_string())?;
+
+    assert!(!output.status.success());
+    assert!(!Path::new(&result).exists());
+
+    Ok(())
+}

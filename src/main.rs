@@ -551,11 +551,27 @@ fn main() -> Result<(), String> {
 
     center_on_window(&mut workarea_rect, &window);
 
-    let mut canvas = window
-        .into_canvas()
-        .build()
-        .map_err(|e| e.to_string())?;
+    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
     texture_creator = canvas.texture_creator();
+
+    debug!("Renderer information: {:?}", canvas.info());
+    let max_size = if canvas.info().name == "software" {
+        // software renderer does not have size limitation but we enforce it anyway,
+        // otherwise rendering might hang the application. This limit should be
+        // enough for 99.9% of usecases
+        (16384, 16384)
+    } else {
+        (
+            canvas.info().max_texture_width,
+            canvas.info().max_texture_height,
+        )
+    };
+    if left_size.size() > max_size || right_size.size() > max_size {
+        return Err(format!(
+            "ERROR: SVG file exceeds size limit of {:?}px",
+            max_size
+        ));
+    }
 
     let left = left_svg.rasterize(&texture_creator, scale)?;
     let right = right_svg.rasterize(&texture_creator, scale)?;
@@ -591,24 +607,33 @@ fn main() -> Result<(), String> {
                     center_on_window(&mut workarea_rect, &canvas.window());
                 }
                 Event::MouseWheel { y, .. } => {
-                    // TODO: should implement some limits, making scale too small
-                    // makes no sense and making it too big would require too much resources
-                    if y > 0 {
-                        scale = scale * 2.0;
-                    } else {
-                        scale = scale / 2.0;
-                    }
-                    debug!("Scale change: {:?}", scale);
-                    // TODO: some caching could be implemented:
-                    let left = left_svg.rasterize(&texture_creator, scale)?;
-                    let right = right_svg.rasterize(&texture_creator, scale)?;
+                    // TODO: should implement min_size handling
+                    let new_scale = if y > 0 { scale * 2.0 } else { scale / 2.0 };
 
-                    diff = Diff::new(left, right);
-                    workarea.set_size(diff.get_size());
-                    // TODO: position should be adjusted so the center
-                    // of diff object stays in place after resize.
-                    // It would be more natural then current behaviour where top-left
-                    // corner is reference point
+                    let left_size = left_svg.query_size(new_scale)?;
+                    let right_size = left_svg.query_size(new_scale)?;
+                    debug!("New size: {:?}", left_size);
+
+                    if left_size.size() > max_size || right_size.size() > max_size {
+                        // TODO: when GUI status support added, include this message
+                        println!(
+                            "ERROR: Zooming any further would exceeds size limit of {:?}px",
+                            max_size
+                        );
+                    } else {
+                        scale = new_scale;
+                        debug!("Scale change: {:?}", scale);
+                        // TODO: some caching could be implemented:
+                        let left = left_svg.rasterize(&texture_creator, scale)?;
+                        let right = right_svg.rasterize(&texture_creator, scale)?;
+
+                        diff = Diff::new(left, right);
+                        workarea.set_size(diff.get_size());
+                        // TODO: position should be adjusted so the center
+                        // of diff object stays in place after resize.
+                        // It would be more natural then current behaviour where top-left
+                        // corner is reference point
+                    }
                 }
                 _ => {}
             }
