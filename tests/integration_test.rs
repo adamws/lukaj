@@ -95,8 +95,14 @@ fn compare_images(actual: &String, expected: &String) -> Result<Val, String> {
 #[cfg_attr(feature = "use-usvg", case("usvg-with-skia"))]
 fn run_diff(
     #[case] backend: String,
-    #[values(("arcs01", "arcs01_2"), ("tinycircle01", "tinycircle01"))] files: (&str, &str),
+    #[values((2, "arcs01", "arcs01_2"), (3, "tinycircle01", "tinycircle01"))] args: (
+        u32,
+        &str,
+        &str,
+    ),
 ) -> Result<(), String> {
+    let scale = args.0;
+    let files = (args.1, args.2);
     let screenshot_name = format!("{}-{}-{}.bmp", backend, files.0, files.1);
     let result = format!("{}/{}", TMPDIR, screenshot_name);
     let reference = format!(
@@ -110,7 +116,7 @@ fn run_diff(
         .env("CARGO_TARGET_TMPDIR", TMPDIR)
         .env("TEST_OUTPUT_FILENAME", screenshot_name)
         .args(&[
-            "-s2",
+            &format!("-s{}", scale),
             "--backend",
             &backend,
             &format!("tests/images/{}.svg", files.0),
@@ -136,7 +142,10 @@ fn run_diff(
 #[rstest]
 #[cfg_attr(feature = "use-rsvg", case("rsvg-with-cairo"))]
 #[cfg_attr(feature = "use-usvg", case("usvg-with-skia"))]
-fn run_large_zoom(#[case] backend: String) -> Result<(), String> {
+fn run_invalid_scale(
+    #[case] backend: String,
+    #[values(1, 80000)] scale: u32,
+) -> Result<(), String> {
     let screenshot_name = "should_not_be_created.bmp";
     let result = format!("{}/{}", TMPDIR, screenshot_name);
 
@@ -145,11 +154,11 @@ fn run_large_zoom(#[case] backend: String) -> Result<(), String> {
         .env("CARGO_TARGET_TMPDIR", TMPDIR)
         .env("TEST_OUTPUT_FILENAME", screenshot_name)
         .args(&[
-            "-s8000",
+            &format!("-s{}", scale),
             "--backend",
             &backend,
-            "tests/images/arcs01.svg",
-            "tests/images/arcs01.svg",
+            "tests/images/tinycircle01.svg",
+            "tests/images/tinycircle01.svg",
         ]);
 
     let wrapped = wrap_with_xvfb(&mut command).map_err(|e| e.to_string())?;

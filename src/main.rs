@@ -587,6 +587,14 @@ fn main() -> Result<(), String> {
         ));
     }
 
+    // anything smaller would be impractical to use with diff-slider
+    let min_size: (u32, u32) = (100, 100);
+    if left_size.size() < min_size || right_size.size() < min_size {
+        return Err(String::from(
+            "ERROR: SVG file too small, consider using --scale option",
+        ));
+    }
+
     let left = left_svg.rasterize(&texture_creator, scale)?;
     let right = right_svg.rasterize(&texture_creator, scale)?;
 
@@ -621,17 +629,21 @@ fn main() -> Result<(), String> {
                     center_on_window(&mut workarea_rect, &canvas.window());
                 }
                 Event::MouseWheel { y, .. } => {
-                    // TODO: should implement min_size handling
                     let new_scale = if y > 0 { scale * 2.0 } else { scale / 2.0 };
 
                     let left_size = left_svg.query_size(new_scale)?;
                     let right_size = left_svg.query_size(new_scale)?;
                     debug!("New size: {:?}", left_size);
 
-                    if left_size.size() > max_size || right_size.size() > max_size {
+                    if left_size.size() < min_size
+                        || left_size.size() > max_size
+                        || right_size.size() < min_size
+                        || right_size.size() > max_size
+                    {
                         // TODO: when GUI status support added, include this message
                         println!(
-                            "ERROR: Zooming any further would exceeds size limit of {:?}px",
+                            "ERROR: Zooming out of allowed size limit, minimum size {:?}px, maxiumum size {:?}px",
+                            min_size,
                             max_size
                         );
                     } else {
