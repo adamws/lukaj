@@ -636,21 +636,20 @@ fn main() -> Result<(), String> {
                         );
                     } else {
                         scale = new_scale;
-                        let left_fraction = diff.get_left_fraction();
-                        workarea_rect = left_size.union(right_size);
                         debug!("Scale change: {:?}", scale);
 
                         // TODO: some caching could be implemented:
                         let left = left_svg.rasterize(&texture_creator, scale)?;
                         let right = right_svg.rasterize(&texture_creator, scale)?;
 
+                        let left_fraction = diff.get_left_fraction();
+
                         diff = Diff::new(left, right);
                         diff.split_by_fraction(left_fraction);
                         workarea.set_size(diff.get_size());
-                        // TODO: position should be adjusted so the center
-                        // of diff object stays in place after resize.
-                        // It would be more natural then current behaviour where top-left
-                        // corner is reference point
+
+                        workarea_rect = left_size.union(right_size);
+                        center_on_window(&mut workarea_rect, &canvas.window());
                     }
                 }
                 _ => {}
