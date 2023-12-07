@@ -622,7 +622,9 @@ fn main() -> Result<(), String> {
                         );
                     } else {
                         scale = new_scale;
+                        workarea_rect = left_size.union(right_size);
                         debug!("Scale change: {:?}", scale);
+
                         // TODO: some caching could be implemented:
                         let left = left_svg.rasterize(&texture_creator, scale)?;
                         let right = right_svg.rasterize(&texture_creator, scale)?;
