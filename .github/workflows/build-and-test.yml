@@ -77,6 +77,32 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  # slightly modified version of ripgrep's 'create-release' workflow:
+  create-release:
+    name: create-release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the release version from the tag
+        if: env.VERSION == ''
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Show the version
+        run: |
+          echo "version is: $VERSION"
+      - name: Check that tag version and Cargo.toml version are the same
+        shell: bash
+        run: |
+          cargo_version=$(awk -F\" '/^version/ { print $2 }' Cargo.toml)
+          if ! [ "$VERSION" = "v$cargo_version" ]; then
+            echo "version does not match Cargo.toml" >&2
+            exit 1
+          fi
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create $VERSION --draft --verify-tag --title $VERSION
+
   build-executables:
     name: Build executables
     runs-on: ${{ matrix.os }}
@@ -94,34 +120,59 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: rustup update stable && rustup default stable
-      - shell: bash
+      - name: Install dependencies
+        shell: bash
         run: |
           cargo install cargo-vcpkg
           cargo vcpkg build
-          mkdir artifacts
-          cargo build --verbose --features static-link --release
+      - name: Prepare environment variables
+        shell: bash
+        run: |
           triplet=$(rustc -vV | awk '/^host/ { print $2 }')
           version=$(awk -F\" '/^version/ { print $2 }' Cargo.toml)
           name=lukaj-${version}-${triplet}
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cd target/release
-            7z a -tzip $name.zip lukaj.exe
-            certutil -hashfile $name.zip SHA256 > ../../artifacts/$name.zip.sha256
-            cp $name.zip ../../artifacts
-          else
-            tar -czvf $name.tar.gz -C target/release lukaj
-            shasum -a 256 $name.tar.gz > artifacts/$name.tar.gz.sha256
-            cp $name.tar.gz artifacts
-          fi
+          echo "NAME=$name" >> $GITHUB_ENV
+          echo "VERSION=$version" >> $GITHUB_ENV
+      - name: Build release binary
+        shell: bash
+        run: |
+          cargo build --verbose --features static-link --release
+      - name: Package release (Unix)
+        shell: bash
+        if: matrix.os != 'windows-latest'
+        run: |
+          asset=$NAME.tar.gz
+          tar -czvf $asset -C target/release lukaj
+          shasum -a 256 $asset > $asset.sha256
+          echo "ASSET=$asset" >> $GITHUB_ENV
+      - name: Package release (Windows)
+        shell: bash
+        if: matrix.os == 'windows-latest'
+        run: |
+          asset=$NAME.zip
+          cd target/release
+          7z a -tzip $asset lukaj.exe
+          cp $asset ../..
+          cd ../..
+          certutil -hashfile $asset SHA256 > $asset.sha256
+          echo "ASSET=$asset" >> $GITHUB_ENV
+      - if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+        name: Upload release archive
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload v${{ env.VERSION }} ${{ env.ASSET }} ${{ env.ASSET }}.sha256
       - uses: actions/upload-artifact@v3
         with:
           name: executables-${{ matrix.os }}
-          path: artifacts
+          path: ${{ env.ASSET }}
           if-no-files-found: error
 
   publish:
     name: Publish release
     needs:
+    - create-release
     - build-and-test
     - build-and-test-win
     - build-executables
@@ -136,9 +187,6 @@ jobs:
     - run: rustup update stable && rustup default stable
     - run: cargo vcpkg build
     - run: cargo publish --all-features --dry-run
-    - if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
-      name: Create GitHub release
-      uses: softprops/action-gh-release@v1
     - if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
       name: Push to crates.io
       run: cargo publish --all-features
