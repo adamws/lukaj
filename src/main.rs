@@ -302,18 +302,32 @@ impl<'a> Diff<'a> {
         }
     }
 
+    fn update_split(&mut self, split: u32) {
+        self.split = split;
+        self.left.split(self.split);
+        self.right.split(self.split);
+        debug!("New split position {:?}", self.split);
+    }
+
     fn update(&mut self, e: &sdl2::EventPump) -> Result<(), String> {
         let state = e.mouse_state();
         if state.is_mouse_button_pressed(MouseButton::Left) {
             let max = cmp::max(self.left.width, self.right.width);
-            self.split = u32::try_from(state.x() - self.position.x())
+            let split = u32::try_from(state.x() - self.position.x())
                 .unwrap_or(0)
                 .clamp(0, max);
-            self.left.split(self.split);
-            self.right.split(self.split);
-            debug!("New split position {:?}", self.split);
+            self.update_split(split);
         }
         Ok(())
+    }
+
+    fn split_by_fraction(&mut self, fraction: f64) {
+        let split = (fraction.clamp(0.0, 1.0) * f64::from(self.get_size().0)) as u32;
+        self.update_split(split);
+    }
+
+    fn get_left_fraction(&self) -> f64 {
+        f64::from(self.split) / f64::from(self.get_size().0)
     }
 
     fn get_size(&self) -> (u32, u32) {
@@ -622,6 +636,7 @@ fn main() -> Result<(), String> {
                         );
                     } else {
                         scale = new_scale;
+                        let left_fraction = diff.get_left_fraction();
                         workarea_rect = left_size.union(right_size);
                         debug!("Scale change: {:?}", scale);
 
@@ -630,6 +645,7 @@ fn main() -> Result<(), String> {
                         let right = right_svg.rasterize(&texture_creator, scale)?;
 
                         diff = Diff::new(left, right);
+                        diff.split_by_fraction(left_fraction);
                         workarea.set_size(diff.get_size());
                         // TODO: position should be adjusted so the center
                         // of diff object stays in place after resize.
