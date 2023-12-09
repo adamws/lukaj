@@ -10,7 +10,13 @@ repository = "https://github.com/adamws/lukaj"
 keywords = ["diff", "svg", "graphics", "images"]
 categories = ["graphics", "multimedia::images"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "lukaj"
+path = "src/main.rs"
+
+[lib]
+name = "lukaj"
+path = "src/lib.rs"
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive"] }
