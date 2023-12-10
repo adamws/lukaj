@@ -12,7 +12,8 @@ compile_error!("Either feature \"use-rsvg\" or \"use-usvg\" must be enabled for 
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// Files to compare
-    files: Vec<PathBuf>,
+    #[clap(num_args = 2)]
+    file: Vec<PathBuf>,
 
     /// Sets a scaling factor
     #[arg(short, long, value_name = "VALUE")]
@@ -35,14 +36,11 @@ fn main() -> Result<(), String> {
 
     let cli = Cli::parse();
 
-    if cli.files.len() != 2 {
-        return Err("Requires exactly two files to compare".to_owned());
-    }
     let scale = cli.scale.unwrap_or(1.0);
     let backend = cli.backend;
 
-    let left = cli.files[0].to_owned();
-    let right = cli.files[1].to_owned();
+    let left = cli.file[0].to_owned();
+    let right = cli.file[1].to_owned();
 
     app(left, right, scale, backend, test_tmpdir.ok())?;
 
