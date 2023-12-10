@@ -2,6 +2,7 @@ use clap::ValueEnum;
 use log::{debug, trace};
 use sdl2::event::Event;
 use sdl2::mouse::MouseButton;
+use sdl2::mouse::MouseState;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
 use sdl2::rect::Rect;
@@ -12,7 +13,6 @@ use sdl2::video::Window;
 use sdl2::video::WindowContext;
 use sdl2::VideoSubsystem;
 use std::cmp;
-use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 
@@ -299,8 +299,7 @@ impl<'a> Diff<'a> {
         debug!("New split position {:?}", self.split);
     }
 
-    fn update(&mut self, e: &sdl2::EventPump) -> Result<(), String> {
-        let state = e.mouse_state();
+    fn update(&mut self, state: &MouseState) {
         if state.is_mouse_button_pressed(MouseButton::Left) {
             let max = cmp::max(self.left.width, self.right.width);
             let split = u32::try_from(state.x() - self.position.x())
@@ -308,7 +307,6 @@ impl<'a> Diff<'a> {
                 .clamp(0, max);
             self.update_split(split);
         }
-        Ok(())
     }
 
     fn split_by_fraction(&mut self, fraction: f64) {
@@ -504,6 +502,98 @@ fn screenshot<P: AsRef<Path>>(canvas: &Canvas<Window>, path: P) -> Result<(), St
     screen.save_bmp(path)
 }
 
+mod drag_module {
+    use sdl2::mouse::MouseButton;
+    use sdl2::mouse::MouseState;
+    use sdl2::rect::Point;
+
+    pub struct Drag {
+        active: bool,
+        drag_start: Point,
+        drag: Point,
+    }
+
+    impl Drag {
+        pub fn new() -> Drag {
+            let drag_start = Point::new(0, 0);
+            let drag = Point::new(0, 0);
+            Drag {
+                active: false,
+                drag_start,
+                drag,
+            }
+        }
+
+        pub fn reset(&mut self) {
+            self.active = false;
+            self.drag_start = Point::new(0, 0);
+            self.drag = Point::new(0, 0);
+        }
+
+        pub fn update(&mut self, state: &MouseState) {
+            let pressed = state.is_mouse_button_pressed(MouseButton::Right);
+            self.internal_update(pressed, state.x(), state.y())
+        }
+
+        fn internal_update(&mut self, pressed: bool, x: i32, y: i32) {
+            if pressed {
+                let position = Point::new(x, y);
+                if !self.active {
+                    self.drag_start = position - self.drag;
+                    self.active = true;
+                } else {
+                    self.drag = position - self.drag_start;
+                }
+            } else {
+                self.active = false;
+            }
+        }
+
+        pub fn get(&self) -> Point {
+            self.drag
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::*;
+
+        fn assert_state(d: &Drag, active: bool, start_x: i32, start_y: i32, x: i32, y: i32) {
+            assert_eq!(d.active, active);
+            assert_eq!(d.drag_start, Point::new(start_x, start_y));
+            assert_eq!(d.drag, Point::new(x, y));
+        }
+
+        #[test]
+        fn test_reset() {
+            let mut d = Drag::new();
+            d.drag_start = Point::new(10, 20);
+            d.drag = Point::new(30, 40);
+            d.reset();
+            assert_state(&d, false, 0, 0, 0, 0);
+        }
+
+        #[test]
+        fn test_internal_update() {
+            let mut d = Drag::new();
+            d.internal_update(true, 10, 10);
+            // first update when pressed true does not change drag value, just toggles the state
+            assert_state(&d, true, 10, 10, 0, 0);
+            // the second update with pressed calculates new drag
+            d.internal_update(true, 15, 20);
+            assert_state(&d, true, 10, 10, 5, 10);
+            // releasing button does not reset drag, just clears the start state
+            d.internal_update(false, 20, 20);
+            assert_state(&d, false, 10, 10, 5, 10);
+            // starting all over, changing start drag position to keep continuous dragging
+            d.internal_update(true, 0, 0);
+            assert_state(&d, true, -5, -10, 5, 10);
+            d.internal_update(true, 5, 0);
+            assert_state(&d, true, -5, -10, 10, 10);
+        }
+    }
+}
+
 pub fn app<P: AsRef<Path>>(
     left: P,
     right: P,
@@ -584,15 +674,11 @@ pub fn app<P: AsRef<Path>>(
     let left = left_svg.rasterize(&texture_creator, scale)?;
     let right = right_svg.rasterize(&texture_creator, scale)?;
 
+    let mut drag = drag_module::Drag::new();
     let mut diff = Diff::new(left, right);
-
     let mut workarea = CheckerBoard::new(&texture_creator, diff.size())?;
 
-    let mut drag_start: Point = Point::new(0, 0);
-    let mut drag: Point = Point::new(0, 0);
-
     let mut event_pump = sdl_context.event_pump()?;
-    let mut prev_buttons = HashSet::new();
 
     'running: loop {
         let frame_start = std::time::Instant::now();
@@ -600,7 +686,7 @@ pub fn app<P: AsRef<Path>>(
         canvas.set_draw_color(Color::RGBA(255, 255, 255, 255));
         canvas.clear();
 
-        let center = canvas.viewport().center();
+        let mut center = canvas.viewport().center();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -608,14 +694,11 @@ pub fn app<P: AsRef<Path>>(
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(sdl2::keyboard::Keycode::R) => {
                         workarea.center_on(center);
-                        drag = Point::new(0, 0);
+                        drag.reset();
                     }
                     Some(sdl2::keyboard::Keycode::Escape) => break 'running,
                     _ => {}
                 },
-                Event::Window { .. } => {
-                    workarea.center_on(center);
-                }
                 Event::MouseWheel { y, .. } => {
                     let new_scale = if y > 0 { scale * 2.0 } else { scale / 2.0 };
 
@@ -653,37 +736,22 @@ pub fn app<P: AsRef<Path>>(
                 _ => {}
             }
         }
+        let mouse_state = event_pump.mouse_state();
 
-        // get a mouse state
-        let state = event_pump.mouse_state();
-        let current_position = Point::new(state.x(), state.y());
+        drag.update(&mouse_state);
+        center += drag.get();
 
-        // Create a set of pressed Keys.
-        let buttons: HashSet<MouseButton> = state.pressed_mouse_buttons().collect();
-        let new_buttons = &buttons - &prev_buttons;
-
-        if new_buttons.contains(&MouseButton::Right) {
-            drag_start = current_position - drag;
-            debug!("Dragging started: {:?}", drag_start);
-        }
-        if buttons.contains(&MouseButton::Right) {
-            drag = current_position - drag_start;
-            debug!("Dragging {:?}", drag);
-        }
-
-        workarea.center_on(center + drag);
+        workarea.center_on(center);
         workarea.draw(&mut canvas)?;
 
-        diff.center_on(center + drag);
-        diff.update(&event_pump)?;
+        diff.center_on(center);
+        diff.update(&mouse_state);
         diff.draw(&mut canvas)?;
 
         canvas.present();
 
         let frame_duration = frame_start.elapsed().as_micros() as u64;
         trace!("Frame duration: {}us", frame_duration);
-
-        prev_buttons = buttons;
 
         match testing {
             Some(val) => {
