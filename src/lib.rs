@@ -5,8 +5,10 @@ use sdl2::mouse::MouseButton;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
 use sdl2::rect::Rect;
+use sdl2::render::Canvas;
 use sdl2::render::Texture;
 use sdl2::render::TextureCreator;
+use sdl2::video::Window;
 use sdl2::video::WindowContext;
 use sdl2::VideoSubsystem;
 use std::cmp;
@@ -486,6 +488,22 @@ fn get_max_window_size(video_subsystem: &VideoSubsystem) -> Result<(u32, u32), S
     Ok(bounds.size())
 }
 
+fn screenshot<P: AsRef<Path>>(canvas: &Canvas<Window>, path: P) -> Result<(), String> {
+    let rect = canvas.viewport();
+    let format = canvas.default_pixel_format();
+    let mut pixels = canvas.read_pixels(rect, format)?;
+
+    let screen = sdl2::surface::Surface::from_data(
+        &mut pixels,
+        rect.width(),
+        rect.height(),
+        4 * rect.width(),
+        format,
+    )?;
+
+    screen.save_bmp(path)
+}
+
 pub fn app<P: AsRef<Path>>(
     left: P,
     right: P,
@@ -676,19 +694,8 @@ pub fn app<P: AsRef<Path>>(
                 let screenshot_name =
                     env::var("TEST_OUTPUT_FILENAME").unwrap_or(String::from("screenshot.bmp"));
 
-                let window = canvas.window();
-                let window_rectangle = Rect::new(0, 0, window.size().0, window.size().1);
-                let pixel_format = window.window_pixel_format();
-                let mut pixels = canvas.read_pixels(window_rectangle, pixel_format)?;
-
-                let screen = sdl2::surface::Surface::from_data(
-                    &mut pixels,
-                    window_rectangle.width(),
-                    window_rectangle.height(),
-                    4 * window_rectangle.width(),
-                    pixel_format,
-                )?;
-                return screen.save_bmp(format!("{}/{}", val, screenshot_name));
+                screenshot(&canvas, format!("{}/{}", val, screenshot_name))?;
+                break 'running;
             }
             _ => {}
         }
