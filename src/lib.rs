@@ -7,7 +7,6 @@ use sdl2::rect::Point;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 use sdl2::render::TextureCreator;
-use sdl2::video::Window;
 use sdl2::video::WindowContext;
 use sdl2::VideoSubsystem;
 use std::cmp;
@@ -184,7 +183,15 @@ impl<'a> SvgTextureBuilder<'a> for UsvgWithSkia {
 trait CanvasEntity {
     fn draw(&self, renderer: &mut sdl2::render::WindowCanvas) -> Result<(), String>;
 
-    fn reposition(&mut self, position: Point) -> Result<(), String>;
+    fn size(&self) -> (u32, u32);
+
+    fn reposition(&mut self, position: Point);
+
+    fn center_on(&mut self, position: Point) {
+        let size = self.size();
+        let offset = Point::new(size.0 as i32 / 2, size.1 as i32 / 2);
+        self.reposition(position - offset)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -251,9 +258,12 @@ impl<'a> CanvasEntity for SplitView<'a> {
         Ok(())
     }
 
-    fn reposition(&mut self, position: Point) -> Result<(), String> {
+    fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+
+    fn reposition(&mut self, position: Point) {
         self.position = position;
-        Ok(())
     }
 }
 
@@ -300,18 +310,12 @@ impl<'a> Diff<'a> {
     }
 
     fn split_by_fraction(&mut self, fraction: f64) {
-        let split = (fraction.clamp(0.0, 1.0) * f64::from(self.get_size().0)) as u32;
+        let split = (fraction.clamp(0.0, 1.0) * f64::from(self.size().0)) as u32;
         self.update_split(split);
     }
 
     fn get_left_fraction(&self) -> f64 {
-        f64::from(self.split) / f64::from(self.get_size().0)
-    }
-
-    fn get_size(&self) -> (u32, u32) {
-        let width = cmp::max(self.left.width, self.right.width);
-        let height = cmp::max(self.left.height, self.right.height);
-        (width, height)
+        f64::from(self.split) / f64::from(self.size().0)
     }
 }
 
@@ -334,11 +338,16 @@ impl<'a> CanvasEntity for Diff<'a> {
         Ok(())
     }
 
-    fn reposition(&mut self, position: Point) -> Result<(), String> {
-        self.left.reposition(position)?;
-        self.right.reposition(position)?;
+    fn size(&self) -> (u32, u32) {
+        let width = cmp::max(self.left.width, self.right.width);
+        let height = cmp::max(self.left.height, self.right.height);
+        (width, height)
+    }
+
+    fn reposition(&mut self, position: Point) {
+        self.left.reposition(position);
+        self.right.reposition(position);
         self.position = position;
-        Ok(())
     }
 }
 
@@ -438,9 +447,12 @@ impl<'a> CanvasEntity for CheckerBoard<'a> {
         Ok(())
     }
 
-    fn reposition(&mut self, position: Point) -> Result<(), String> {
+    fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+
+    fn reposition(&mut self, position: Point) {
         self.position = position;
-        Ok(())
     }
 }
 
@@ -457,7 +469,7 @@ fn get_texture_builder<'a, P: AsRef<Path>>(
     Ok(builder)
 }
 
-fn get_max_window_size(video_subsystem: &VideoSubsystem) -> Result<Rect, String> {
+fn get_max_window_size(video_subsystem: &VideoSubsystem) -> Result<(u32, u32), String> {
     let bounds = {
         let video_displays = video_subsystem.num_video_displays()?;
         let mut max = Rect::new(0, 0, 0, 0);
@@ -471,14 +483,7 @@ fn get_max_window_size(video_subsystem: &VideoSubsystem) -> Result<Rect, String>
         max
     };
     debug!("Maximum display usable bounds: {:?}", bounds);
-    Ok(bounds)
-}
-
-fn center_on_window(rect: &mut Rect, window: &Window) {
-    rect.center_on(Point::new(
-        (window.size().0 / 2) as i32,
-        (window.size().1 / 2) as i32,
-    ));
+    Ok(bounds.size())
 }
 
 pub fn app<P: AsRef<Path>>(
@@ -499,18 +504,16 @@ pub fn app<P: AsRef<Path>>(
     debug!("Left SVG size {:?}", left_size.size());
     debug!("Right SVG size {:?}", right_size.size());
 
-    let mut workarea_rect: Rect = left_size.union(right_size);
-
     let sdl_context = sdl2::init()?;
 
     let video_subsystem = sdl_context.video()?;
 
-    let minimum_size = Rect::new(0, 0, 800, 600);
-    let maximum_size = get_max_window_size(&video_subsystem)?;
-    let window_width = ((workarea_rect.width() as f64 * 1.1) as u32)
-        .clamp(minimum_size.width(), maximum_size.width());
-    let window_height = ((workarea_rect.height() as f64 * 1.1) as u32)
-        .clamp(minimum_size.height(), maximum_size.height());
+    let min_size: (u32, u32) = (800, 600);
+    let max_size: (u32, u32) = get_max_window_size(&video_subsystem)?;
+    let svg_size = left_size.union(right_size).size();
+
+    let window_width = ((1.1 * svg_size.0 as f64) as u32).clamp(min_size.0, max_size.0);
+    let window_height = ((1.1 * svg_size.1 as f64) as u32).clamp(min_size.1, max_size.1);
 
     let mut window = video_subsystem
         .window("lukaj", window_width, window_height)
@@ -529,9 +532,6 @@ pub fn app<P: AsRef<Path>>(
         window.size().0,
         window.size().1
     );
-    debug!("Workarea: {:?}", workarea_rect);
-
-    center_on_window(&mut workarea_rect, &window);
 
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
     texture_creator = canvas.texture_creator();
@@ -568,7 +568,7 @@ pub fn app<P: AsRef<Path>>(
 
     let mut diff = Diff::new(left, right);
 
-    let mut workarea = CheckerBoard::new(&texture_creator, diff.get_size())?;
+    let mut workarea = CheckerBoard::new(&texture_creator, diff.size())?;
 
     let mut drag_start: Point = Point::new(0, 0);
     let mut drag: Point = Point::new(0, 0);
@@ -582,19 +582,21 @@ pub fn app<P: AsRef<Path>>(
         canvas.set_draw_color(Color::RGBA(255, 255, 255, 255));
         canvas.clear();
 
+        let center = canvas.viewport().center();
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => break 'running,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(sdl2::keyboard::Keycode::R) => {
-                        center_on_window(&mut workarea_rect, &canvas.window());
+                        workarea.center_on(center);
                         drag = Point::new(0, 0);
                     }
                     Some(sdl2::keyboard::Keycode::Escape) => break 'running,
                     _ => {}
                 },
                 Event::Window { .. } => {
-                    center_on_window(&mut workarea_rect, &canvas.window());
+                    workarea.center_on(center);
                 }
                 Event::MouseWheel { y, .. } => {
                     let new_scale = if y > 0 { scale * 2.0 } else { scale / 2.0 };
@@ -626,10 +628,8 @@ pub fn app<P: AsRef<Path>>(
 
                         diff = Diff::new(left, right);
                         diff.split_by_fraction(left_fraction);
-                        workarea.set_size(diff.get_size());
-
-                        workarea_rect = left_size.union(right_size);
-                        center_on_window(&mut workarea_rect, &canvas.window());
+                        workarea.set_size(diff.size());
+                        workarea.center_on(center);
                     }
                 }
                 _ => {}
@@ -653,13 +653,10 @@ pub fn app<P: AsRef<Path>>(
             debug!("Dragging {:?}", drag);
         }
 
-        let mut workarea_rect_dst = workarea_rect.clone();
-        workarea_rect_dst.offset(drag.x(), drag.y());
-
-        workarea.reposition(workarea_rect_dst.top_left())?;
+        workarea.center_on(center + drag);
         workarea.draw(&mut canvas)?;
 
-        diff.reposition(workarea_rect_dst.top_left())?;
+        diff.center_on(center + drag);
         diff.update(&event_pump)?;
         diff.draw(&mut canvas)?;
 
