@@ -693,7 +693,6 @@ pub fn app<P: AsRef<Path>>(
                 Event::Quit { .. } => break 'running,
                 Event::KeyDown { keycode, .. } => match keycode {
                     Some(sdl2::keyboard::Keycode::R) => {
-                        workarea.center_on(center);
                         drag.reset();
                     }
                     Some(sdl2::keyboard::Keycode::Escape) => break 'running,
@@ -730,7 +729,6 @@ pub fn app<P: AsRef<Path>>(
                         diff = Diff::new(left, right);
                         diff.split_by_fraction(left_fraction);
                         workarea.set_size(diff.size());
-                        workarea.center_on(center);
                     }
                 }
                 _ => {}
