@@ -9,6 +9,9 @@ use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::render::Texture;
 use sdl2::render::TextureCreator;
+use sdl2::render::TextureQuery;
+use sdl2::rwops::RWops;
+use sdl2::ttf::Font;
 use sdl2::video::Window;
 use sdl2::video::WindowContext;
 use sdl2::VideoSubsystem;
@@ -193,6 +196,37 @@ trait CanvasEntity {
         let size = self.size();
         let offset = Point::new(size.0 as i32 / 2, size.1 as i32 / 2);
         self.reposition(position - offset)
+    }
+}
+
+/// Entity of single fixed texture which is always drawn fully
+/// (without clipping, stretching etc) to given position
+struct SimpleCanvasEntity<'a> {
+    texture: Texture<'a>,
+    position: Point,
+}
+
+impl<'a> CanvasEntity for SimpleCanvasEntity<'a> {
+    fn draw(&self, renderer: &mut sdl2::render::WindowCanvas) -> Result<(), String> {
+        renderer.copy(
+            &self.texture,
+            None,
+            Rect::new(
+                self.position.x,
+                self.position.y,
+                self.size().0,
+                self.size().1,
+            ),
+        )
+    }
+
+    fn size(&self) -> (u32, u32) {
+        let TextureQuery { width, height, .. } = self.texture.query();
+        (width, height)
+    }
+
+    fn reposition(&mut self, position: Point) {
+        self.position = position;
     }
 }
 
@@ -456,6 +490,228 @@ impl<'a> CanvasEntity for CheckerBoard<'a> {
     }
 }
 
+mod digits_display_module {
+    use sdl2::pixels::Color;
+    use sdl2::rect::Point;
+    use sdl2::rect::Rect;
+    use sdl2::render::Texture;
+    use sdl2::render::TextureCreator;
+    use sdl2::render::TextureQuery;
+    use sdl2::ttf::Font;
+    use sdl2::video::WindowContext;
+
+    use super::CanvasEntity;
+
+    // '/' character is not used but it is included to keep ASCII value matching
+    const GLYPHS: &str = "-./0123456789";
+
+    pub struct DigitsDisplay<'a> {
+        texture: Texture<'a>,
+        glyph_width: u32,
+        glyph_height: u32,
+        position: Point,
+        glyphs: Vec<u8>,
+    }
+
+    impl<'a> DigitsDisplay<'a> {
+        pub fn new(
+            font: &Font,
+            texture_creator: &'a TextureCreator<WindowContext>,
+        ) -> Result<DigitsDisplay<'a>, String> {
+            let font_surface = font
+                .render(GLYPHS)
+                .blended(Color::RGBA(0, 0, 0, 255))
+                .map_err(|e| e.to_string())?;
+
+            let texture = texture_creator
+                .create_texture_from_surface(&font_surface)
+                .map_err(|e| e.to_string())?;
+
+            let TextureQuery { width, height, .. } = texture.query();
+            let glyph_width = width / GLYPHS.len() as u32;
+            let glyph_height = height;
+
+            Ok(DigitsDisplay {
+                texture,
+                glyph_width,
+                glyph_height,
+                position: Point::new(0, 0),
+                glyphs: Vec::with_capacity(64),
+            })
+        }
+
+        pub fn with_i32(&mut self, value: i32) {
+            self.glyphs.clear();
+            for c in format!("{}", value).bytes() {
+                self.glyphs.push(c - '-' as u8);
+            }
+        }
+
+        pub fn with_f64(&mut self, value: f64) {
+            self.glyphs.clear();
+            for c in format!("{:?}", value).bytes() {
+                self.glyphs.push(c - '-' as u8);
+            }
+        }
+    }
+
+    impl<'a> CanvasEntity for DigitsDisplay<'a> {
+        fn draw(&self, renderer: &mut sdl2::render::WindowCanvas) -> Result<(), String> {
+            let glyph_width = self.glyph_width;
+            let glyph_height = self.glyph_height;
+
+            let mut m = 0u32;
+
+            let mut render = |index: u32, position: u32| -> Result<(), String> {
+                renderer.copy(
+                    &self.texture,
+                    Rect::new((glyph_width * index) as i32, 0, glyph_width, glyph_height),
+                    Rect::new(
+                        self.position.x + (glyph_width * position) as i32,
+                        self.position.y,
+                        glyph_width,
+                        glyph_height,
+                    ),
+                )
+            };
+
+            for &digit in self.glyphs.iter() {
+                render(digit as u32, m)?;
+                m += 1;
+            }
+            Ok(())
+        }
+
+        fn size(&self) -> (u32, u32) {
+            let TextureQuery { height, .. } = self.texture.query();
+            (self.glyph_width * self.glyphs.len() as u32, height)
+        }
+
+        fn reposition(&mut self, position: Point) {
+            self.position = position;
+        }
+    }
+}
+
+fn new_static_text<'a>(
+    text: &str,
+    font: &Font,
+    texture_creator: &'a TextureCreator<WindowContext>,
+) -> Result<SimpleCanvasEntity<'a>, String> {
+    let font_surface = font
+        .render(text)
+        .blended(Color::RGBA(0, 0, 0, 255))
+        .map_err(|e| e.to_string())?;
+
+    let texture = texture_creator
+        .create_texture_from_surface(&font_surface)
+        .map_err(|e| e.to_string())?;
+
+    Ok(SimpleCanvasEntity {
+        texture,
+        position: Point::new(0, 0),
+    })
+}
+
+struct LabeledDigitsDisplay<'a> {
+    label: SimpleCanvasEntity<'a>,
+    digits: digits_display_module::DigitsDisplay<'a>,
+}
+
+impl<'a> LabeledDigitsDisplay<'a> {
+    fn new(
+        text: &str,
+        font: &Font,
+        texture_creator: &'a TextureCreator<WindowContext>,
+    ) -> Result<LabeledDigitsDisplay<'a>, String> {
+        let label = new_static_text(text, &font, &texture_creator)?;
+        let digits = digits_display_module::DigitsDisplay::new(&font, &texture_creator)?;
+        Ok(LabeledDigitsDisplay { label, digits })
+    }
+}
+
+impl<'a> CanvasEntity for LabeledDigitsDisplay<'a> {
+    fn draw(&self, renderer: &mut sdl2::render::WindowCanvas) -> Result<(), String> {
+        self.label.draw(renderer)?;
+        self.digits.draw(renderer)?;
+        Ok(())
+    }
+
+    fn reposition(&mut self, position: Point) {
+        self.label.reposition(position);
+        self.digits
+            .reposition(position + Point::new(self.label.size().0 as i32, 0));
+    }
+
+    fn size(&self) -> (u32, u32) {
+        (
+            self.label.size().0 + self.digits.size().0,
+            self.label.size().1,
+        )
+    }
+}
+
+struct StatusBar<'a> {
+    mouse_x_display: LabeledDigitsDisplay<'a>,
+    mouse_y_display: LabeledDigitsDisplay<'a>,
+    split_display: LabeledDigitsDisplay<'a>,
+    scale_display: LabeledDigitsDisplay<'a>,
+}
+
+impl<'a> StatusBar<'a> {
+    fn new(
+        font: &Font,
+        texture_creator: &'a TextureCreator<WindowContext>,
+    ) -> Result<StatusBar<'a>, String> {
+        Ok(StatusBar {
+            mouse_x_display: LabeledDigitsDisplay::new("x:", &font, &texture_creator)?,
+            mouse_y_display: LabeledDigitsDisplay::new(" y:", &font, &texture_creator)?,
+            split_display: LabeledDigitsDisplay::new(" split:", &font, &texture_creator)?,
+            scale_display: LabeledDigitsDisplay::new(" scale:", &font, &texture_creator)?,
+        })
+    }
+
+    fn update(&mut self, x: i32, y: i32, split: i32, scale: f64) {
+        self.mouse_x_display.digits.with_i32(x);
+        self.mouse_y_display.digits.with_i32(y);
+        self.split_display.digits.with_i32(split);
+        self.scale_display.digits.with_f64(scale);
+    }
+}
+
+impl<'a> CanvasEntity for StatusBar<'a> {
+    fn draw(&self, renderer: &mut sdl2::render::WindowCanvas) -> Result<(), String> {
+        self.mouse_x_display.draw(renderer)?;
+        self.mouse_y_display.draw(renderer)?;
+        self.split_display.draw(renderer)?;
+        self.scale_display.draw(renderer)?;
+        Ok(())
+    }
+
+    fn reposition(&mut self, position: Point) {
+        fn reposition_internal<T: CanvasEntity>(element: &mut T, position: Point) -> Point {
+            element.reposition(position);
+            position + Point::new(element.size().0 as i32, 0)
+        }
+
+        let mut p = position;
+        p = reposition_internal(&mut self.mouse_x_display, p);
+        p = reposition_internal(&mut self.mouse_y_display, p);
+        p = reposition_internal(&mut self.split_display, p);
+        _ = reposition_internal(&mut self.scale_display, p);
+    }
+
+    fn size(&self) -> (u32, u32) {
+        (
+            self.mouse_x_display.size().0
+                + self.mouse_y_display.size().0
+                + self.split_display.size().0
+                + self.scale_display.size().0,
+            self.mouse_x_display.size().1,
+        )
+    }
+}
+
 fn get_texture_builder<'a, P: AsRef<Path>>(
     path: P,
     backend: SvgBackend,
@@ -615,6 +871,11 @@ pub fn app<P: AsRef<Path>>(
     let sdl_context = sdl2::init()?;
 
     let video_subsystem = sdl_context.video()?;
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+
+    // Load a font TODO: not sure if needed, perhaps will load with fontdb only
+    let font = include_bytes!("../resources/DejaVuSansMono.ttf");
+    let font = &ttf_context.load_font_from_rwops(RWops::from_bytes(font)?, 12)?;
 
     let min_size: (u32, u32) = (800, 600);
     let max_size: (u32, u32) = get_max_window_size(&video_subsystem)?;
@@ -671,13 +932,17 @@ pub fn app<P: AsRef<Path>>(
         ));
     }
 
+    // canvas elements:
     let left = left_svg.rasterize(&texture_creator, scale)?;
     let right = right_svg.rasterize(&texture_creator, scale)?;
-
-    let mut drag = drag_module::Drag::new();
     let mut diff = Diff::new(left, right);
     let mut workarea = CheckerBoard::new(&texture_creator, diff.size())?;
+    let mut status_bar = StatusBar::new(&font, &texture_creator)?;
 
+    status_bar.reposition(canvas.viewport().bottom_left());
+
+    // app logic handling:
+    let mut drag = drag_module::Drag::new();
     let mut event_pump = sdl_context.event_pump()?;
 
     'running: loop {
@@ -686,7 +951,8 @@ pub fn app<P: AsRef<Path>>(
         canvas.set_draw_color(Color::RGBA(255, 255, 255, 255));
         canvas.clear();
 
-        let mut center = canvas.viewport().center();
+        let viewport = canvas.viewport();
+        let mut center = viewport.center();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -745,6 +1011,15 @@ pub fn app<P: AsRef<Path>>(
         diff.center_on(center);
         diff.update(&mouse_state);
         diff.draw(&mut canvas)?;
+
+        status_bar.reposition(viewport.bottom_left() - Point::new(0, status_bar.size().1 as i32));
+        status_bar.update(
+            mouse_state.x() - workarea.position.x(),
+            mouse_state.y() - workarea.position.y(),
+            diff.split as i32,
+            scale,
+        );
+        status_bar.draw(&mut canvas)?;
 
         canvas.present();
 

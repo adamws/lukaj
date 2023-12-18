@@ -10,7 +10,7 @@ RUN apt-get update \
   && apt-get install -y \
      automake autoconf build-essential curl cmake git libtool ninja-build tar unzip zip \
      libcairo2-dev libgdk-pixbuf-2.0-dev libglib2.0-dev libpango1.0-dev \
-     libsdl2-dev libxml2-dev \
+     libsdl2-dev libsdl2-ttf-dev libxml2-dev \
      xvfb x11-xserver-utils \
   && rm -rf /var/lib/apt/lists/*
 

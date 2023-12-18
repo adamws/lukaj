@@ -66,6 +66,7 @@ jobs:
             mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_ttf
       - run: rustup update stable-gnu && rustup default stable-gnu
       - shell: bash
         run: echo "D:/msys64/mingw64/bin" >> $GITHUB_PATH
