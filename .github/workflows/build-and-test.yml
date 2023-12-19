@@ -38,6 +38,7 @@ jobs:
             --keep-only "src/*" --keep-only "tests/*" --output-types lcov,markdown,html
           cat target/tmp/markdown.md
       - uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: artifacts-linux-${{ matrix.toolchain }}
           path: target/tmp/*
@@ -73,6 +74,7 @@ jobs:
       - run: cargo build --features use-rsvg
       - run: cargo test --features use-rsvg
       - uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: artifacts-windows-gnu
           path: target/tmp/*
