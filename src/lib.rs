@@ -1012,13 +1012,14 @@ pub fn app<P: AsRef<Path>>(
         diff.update(&mouse_state);
         diff.draw(&mut canvas)?;
 
-        status_bar.reposition(viewport.bottom_left() - Point::new(0, status_bar.size().1 as i32));
         status_bar.update(
             mouse_state.x() - workarea.position.x(),
             mouse_state.y() - workarea.position.y(),
             diff.split as i32,
             scale,
         );
+        status_bar
+            .reposition(viewport.bottom_left() - Point::new(0, status_bar.size().1 as i32));
         status_bar.draw(&mut canvas)?;
 
         canvas.present();
