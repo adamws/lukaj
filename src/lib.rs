@@ -942,17 +942,12 @@ pub fn app<P: AsRef<Path>>(
     status_bar.reposition(canvas.viewport().bottom_left());
 
     // app logic handling:
+    let mut redraw: bool = true;
     let mut drag = drag_module::Drag::new();
     let mut event_pump = sdl_context.event_pump()?;
 
     'running: loop {
         let frame_start = std::time::Instant::now();
-
-        canvas.set_draw_color(Color::RGBA(255, 255, 255, 255));
-        canvas.clear();
-
-        let viewport = canvas.viewport();
-        let mut center = viewport.center();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -962,6 +957,11 @@ pub fn app<P: AsRef<Path>>(
                         drag.reset();
                     }
                     Some(sdl2::keyboard::Keycode::Escape) => break 'running,
+                    _ => {}
+                },
+                Event::Window { win_event, .. } => match win_event {
+                    sdl2::event::WindowEvent::FocusGained => redraw = true,
+                    sdl2::event::WindowEvent::FocusLost => redraw = false,
                     _ => {}
                 },
                 Event::MouseWheel { y, .. } => {
@@ -1000,32 +1000,38 @@ pub fn app<P: AsRef<Path>>(
                 _ => {}
             }
         }
-        let mouse_state = event_pump.mouse_state();
 
-        drag.update(&mouse_state);
-        center += drag.get();
+        if redraw || testing.is_some() {
+            canvas.set_draw_color(Color::RGBA(255, 255, 255, 255));
+            canvas.clear();
 
-        workarea.center_on(center);
-        workarea.draw(&mut canvas)?;
+            let viewport = canvas.viewport();
+            let mut center = viewport.center();
 
-        diff.center_on(center);
-        diff.update(&mouse_state);
-        diff.draw(&mut canvas)?;
+            let mouse_state = event_pump.mouse_state();
 
-        status_bar.update(
-            mouse_state.x() - workarea.position.x(),
-            mouse_state.y() - workarea.position.y(),
-            diff.split as i32,
-            scale,
-        );
-        status_bar
-            .reposition(viewport.bottom_left() - Point::new(0, status_bar.size().1 as i32));
-        status_bar.draw(&mut canvas)?;
+            drag.update(&mouse_state);
+            center += drag.get();
 
-        canvas.present();
+            workarea.center_on(center);
+            workarea.draw(&mut canvas)?;
 
-        let frame_duration = frame_start.elapsed().as_micros() as u64;
-        trace!("Frame duration: {}us", frame_duration);
+            diff.center_on(center);
+            diff.update(&mouse_state);
+            diff.draw(&mut canvas)?;
+
+            status_bar.update(
+                mouse_state.x() - workarea.position.x(),
+                mouse_state.y() - workarea.position.y(),
+                diff.split as i32,
+                scale,
+            );
+            status_bar
+                .reposition(viewport.bottom_left() - Point::new(0, status_bar.size().1 as i32));
+            status_bar.draw(&mut canvas)?;
+
+            canvas.present();
+        }
 
         match testing {
             Some(val) => {
@@ -1042,7 +1048,14 @@ pub fn app<P: AsRef<Path>>(
             _ => {}
         }
 
-        ::std::thread::sleep(std::time::Duration::new(0, 1_000_000_000u32 / 30));
+        let frame_duration = frame_start.elapsed();
+        trace!("Frame duration: {}us", frame_duration.as_micros() as u64);
+
+        // cap to ~30 FPS
+        match std::time::Duration::from_millis(33).checked_sub(frame_duration) {
+            Some(t) => ::std::thread::sleep(t),
+            _ => {}
+        }
     }
 
     Ok(())
