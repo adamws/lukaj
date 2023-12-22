@@ -17,6 +17,9 @@ use sdl2::video::WindowContext;
 use sdl2::VideoSubsystem;
 use std::cmp;
 use std::env;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::Read;
 use std::path::Path;
 
 #[cfg(feature = "use-usvg")]
@@ -881,6 +884,35 @@ mod drag_module {
     }
 }
 
+pub fn diff_files(left: &Path, right: &Path) -> Result<bool, std::io::Error> {
+    let f1 = File::open(left)?;
+    let f2 = File::open(right)?;
+
+    // Check if file sizes are different
+    if f1.metadata()?.len() != f2.metadata()?.len() {
+        return Ok(false);
+    }
+
+    let mut f1 = BufReader::new(f1);
+    let mut f2 = BufReader::new(f2);
+
+    let mut buf1 = Vec::new();
+    let mut buf2 = Vec::new();
+
+    // probably naive but we are not expecting large files
+
+    f1.read_to_end(&mut buf1)?;
+    f2.read_to_end(&mut buf2)?;
+
+    for (a, b) in buf1.iter().zip(buf2.iter()) {
+        if a != b {
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
+}
+
 pub fn app<P: AsRef<Path>>(
     left_file: P,
     right_file: P,
@@ -972,10 +1004,16 @@ pub fn app<P: AsRef<Path>>(
     let mut workarea = CheckerBoard::new(&texture_creator, diff.size())?;
 
     let message = format!(
-        "Left: {:?} Right: {:?}",
+        "Left: {:?} Right: {:?}{}",
         left_file.as_ref(),
-        right_file.as_ref()
+        right_file.as_ref(),
+        if diff_files(left_file.as_ref(), right_file.as_ref()).map_err(|e| e.to_string())? {
+            " [no differences found]"
+        } else {
+            ""
+        }
     );
+
     let mut message_bar = MessageBar::new(&message, &font, &texture_creator)?;
     let mut status_bar = StatusBar::new(&font, &texture_creator)?;
 
