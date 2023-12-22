@@ -712,8 +712,39 @@ impl<'a> CanvasEntity for StatusBar<'a> {
     }
 }
 
-fn get_texture_builder<'a, P: AsRef<Path>>(
-    path: P,
+struct MessageBar<'a> {
+    message: SimpleCanvasEntity<'a>,
+}
+
+impl<'a> MessageBar<'a> {
+    fn new(
+        text: &str,
+        font: &Font,
+        texture_creator: &'a TextureCreator<WindowContext>,
+    ) -> Result<MessageBar<'a>, String> {
+        Ok(MessageBar {
+            message: new_static_text(text, font, texture_creator)?,
+        })
+    }
+}
+
+impl<'a> CanvasEntity for MessageBar<'a> {
+    fn draw(&self, renderer: &mut sdl2::render::WindowCanvas) -> Result<(), String> {
+        self.message.draw(renderer)?;
+        Ok(())
+    }
+
+    fn reposition(&mut self, position: Point) {
+        self.message.reposition(position)
+    }
+
+    fn size(&self) -> (u32, u32) {
+        self.message.size()
+    }
+}
+
+fn get_texture_builder<'a>(
+    path: &Path,
     backend: SvgBackend,
 ) -> Result<Box<dyn SvgTextureBuilder<'a>>, String> {
     let builder: Box<dyn SvgTextureBuilder> = match backend {
@@ -851,15 +882,15 @@ mod drag_module {
 }
 
 pub fn app<P: AsRef<Path>>(
-    left: P,
-    right: P,
+    left_file: P,
+    right_file: P,
     scale: f64,
     backend: SvgBackend,
     testing: Option<String>,
 ) -> Result<(), String> {
     let texture_creator: TextureCreator<WindowContext>;
-    let left_svg = get_texture_builder(left, backend)?;
-    let right_svg = get_texture_builder(right, backend)?;
+    let left_svg = get_texture_builder(left_file.as_ref(), backend)?;
+    let right_svg = get_texture_builder(right_file.as_ref(), backend)?;
 
     let mut scale = scale;
     let mut new_scale = scale;
@@ -939,6 +970,13 @@ pub fn app<P: AsRef<Path>>(
     let right = right_svg.rasterize(&texture_creator, scale)?;
     let mut diff = Diff::new(left, right);
     let mut workarea = CheckerBoard::new(&texture_creator, diff.size())?;
+
+    let message = format!(
+        "Left: {:?} Right: {:?}",
+        left_file.as_ref(),
+        right_file.as_ref()
+    );
+    let mut message_bar = MessageBar::new(&message, &font, &texture_creator)?;
     let mut status_bar = StatusBar::new(&font, &texture_creator)?;
 
     status_bar.reposition(canvas.viewport().bottom_left());
@@ -1029,6 +1067,9 @@ pub fn app<P: AsRef<Path>>(
             diff.center_on(center);
             diff.update(&mouse_state);
             diff.draw(&mut canvas)?;
+
+            message_bar.reposition(viewport.top_left());
+            message_bar.draw(&mut canvas)?;
 
             status_bar.update(
                 mouse_state.x() - workarea.position.x(),
