@@ -105,11 +105,13 @@ additional development libraries.
 
 <details>
   <summary>On <b>Mac</b> (using <a href="https://www.brew.sh/">homebrew</a>) <i>(click to expand)</i></summary>
-    ```bash
-    brew install rust sdl2 sdl2_ttf
-    export LIBRARY_PATH="$LIBRARY_PATH:/opt/homebrew/lib"
-    cargo install lukaj
-    ```
+  
+  ```bash
+  brew install rust sdl2 sdl2_ttf
+  export LIBRARY_PATH="$LIBRARY_PATH:/opt/homebrew/lib"
+  cargo install lukaj
+  ```
+    
 </details>
 
 ## Usage
