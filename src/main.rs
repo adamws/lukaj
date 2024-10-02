@@ -1,6 +1,6 @@
 use lukaj::{app, SvgBackend};
 
-use clap::{Parser, ValueEnum};
+use clap::{ArgAction, Parser, ValueEnum};
 use log::debug;
 use std::env;
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ compile_error!("Either feature \"use-rsvg\" or \"use-usvg\" must be enabled for 
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// Files to compare
-    #[clap(num_args = 2)]
+    #[arg(required = true, num_args = 2..=2, action = ArgAction::Append)]
     file: Vec<PathBuf>,
 
     /// Sets a scaling factor
