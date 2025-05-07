@@ -110,7 +110,7 @@ jobs:
   build-executables:
     name: Build executables
     runs-on: ${{ matrix.os }}
-    # note that we are not building with `user-rsvg` support here
+    # note that we are not building with `use-rsvg` support here
     # so using lukaj-test docker image with pre-installed dependencies
     # is not required
     strategy:
