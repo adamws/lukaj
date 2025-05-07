@@ -54,7 +54,7 @@ additional development libraries.
       ```bash
       $ sudo apt-get install build-essential libcairo2-dev libgdk-pixbuf-2.0-dev \
           libglib2.0-dev libpango1.0-dev libsdl2-dev libxml2-dev
-      $ cargo install lukaj --feature user-rsvg
+      $ cargo install lukaj --features use-rsvg
       ```
 
 </details>
